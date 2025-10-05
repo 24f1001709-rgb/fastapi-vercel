@@ -1,0 +1,37 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["POST"],
+    allow_headers=["*"],
+)
+
+@app.post("/")
+async def telemetry_metrics(request: Request):
+    data = await request.json()
+    regions = data.get("regions", [])
+    threshold_ms = data.get("threshold_ms", 0)
+
+    sample_data = {
+        "apac": [120, 140, 160, 200, 180],
+        "emea": [100, 150, 130, 170, 155]
+    }
+
+    response = {}
+    for region in regions:
+        latencies = sample_data.get(region, [])
+        if latencies:
+            response[region] = {
+                "avg_latency": float(np.mean(latencies)),
+                "p95_latency": float(np.percentile(latencies, 95)),
+                "avg_uptime": 99.9,
+                "breaches": int(sum(l > threshold_ms for l in latencies))
+            }
+        else:
+            response[region] = {}
+    return response
